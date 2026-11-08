@@ -1,4 +1,3 @@
-
 -- PART 1, TASK 1
 -- Show all animation movies released during 2017-2019 with rate more than 1,
 -- sorted alphabetically.
@@ -36,6 +35,18 @@ INNER JOIN animation_films AS af ON af.film_id = f.film_id
 WHERE f.release_year BETWEEN 2017 AND 2019
   AND f.rental_rate > 1
 ORDER BY f.title;
+
+-- 1) JOIN
+--    Advantages: short and easy to read. All conditions are in one WHERE.
+--    Disadvantages: if we need more tables, the query gets longer.
+-- 2) Subquery
+--    Advantages: easy to follow step by step.
+--    Disadvantages: IN inside IN is hard to read. If we need the category name later, we must rewrite it.
+-- 3) CTE
+--    Advantages: the animation films part has its own name, so it is clear.
+--    Disadvantages: too long for such a simple task.
+-- Production: JOIN, because it is the shortest and simplest. It also gives no duplicate rows.
+
 
 -- PART 1, TASK 2
 -- Calculate the revenue earned by each rental store after March 2017 (since April)
@@ -76,6 +87,19 @@ FROM store_revenue AS sr
 INNER JOIN public.store AS s ON s.store_id = sr.store_id
 INNER JOIN public.address AS a ON a.address_id = s.address_id
 ORDER BY sr.revenue DESC;
+
+-- 1) JOIN
+--    Advantages: short and clear.
+--    Disadvantages: we must add the address columns to GROUP BY. A store with no payments will not show.
+-- 2) Subquery
+--    Advantages: starts from the store table, so a store with no payments still shows (NULL).
+--    Disadvantages: it runs again for each store, so it can be slow with big data.
+-- 3) CTE
+--    Advantages: first we calculate revenue by store, then we add the address. Two simple steps.
+--    Disadvantages: a bit longer. A store with no payments will not show here too.
+-- Production: CTE, because the steps are separate, so it is easy to read and change.
+
+
 -- PART 1, TASK 3
 -- Show top-5 actors by number of movies (released since 2015) they took part in
 
@@ -112,10 +136,22 @@ INNER JOIN public.actor AS a ON a.actor_id = am.actor_id
 ORDER BY am.number_of_movies DESC, a.last_name, a.first_name
 LIMIT 5;
 
+-- 1) JOIN
+--    Advantages: simple and fast.
+--    Disadvantages: actors with no films since 2015 are not counted (it is ok for a top 5).
+-- 2) Subquery
+--    Advantages: also counts actors who have 0 films.
+--    Disadvantages: it runs for each actor, so it is slower.
+-- 3) CTE
+--    Advantages: counting and names are separate, so it is easy to read.
+--    Disadvantages: same result as JOIN, only longer.
+-- Production: JOIN, because it is simple and fast. I added names to ORDER BY so the order is always the same when numbers are equal.
+
+
 -- PART 1, TASK 4
 -- Show number of Drama, Travel, Documentary per year (columns: release_year,
 -- number_of_drama_movies, number_of_travel_movies, number_of_documentary_movies),
--- sorted by release year in descending order. 
+-- sorted by release year in descending order.
 
 SELECT f.release_year,
        COUNT(CASE WHEN UPPER(c.name) = 'DRAMA' THEN 1 END)       AS number_of_drama_movies,
@@ -155,8 +191,22 @@ FROM genre_films AS gf
 GROUP BY gf.release_year
 ORDER BY gf.release_year DESC;
 
+-- All three use COUNT(CASE WHEN ...) to make a column for each genre.
+-- 1) JOIN
+--    Advantages: shortest, everything is done in one step.
+--    Disadvantages: joining, filtering and counting are all in one block.
+-- 2) Subquery
+--    Advantages: first gets year and genre, then counts.
+--    Disadvantages: an extra layer that is not needed here.
+-- 3) CTE
+--    Advantages: same as the subquery but with a name, so it is cleaner.
+--    Disadvantages: not needed for such a small query.
+-- Production: JOIN, because it is the shortest and does everything at once.
+
+
 -- PART 2, TASK 1
 -- Which three employees generated the most revenue in 2017?
+-- Assumption: store = the store where the employee made the last payment in 2017.
 
 SELECT s.first_name, s.last_name, s.store_id, SUM(p.amount) AS revenue
 FROM public.staff AS s
@@ -211,9 +261,22 @@ INNER JOIN last_store AS ls ON ls.staff_id = sr.staff_id
 ORDER BY sr.revenue DESC
 LIMIT 3;
 
+-- 1) JOIN
+--    Advantages: simplest and fastest.
+--    Disadvantages: store_id is the store saved in the staff table, not the store of the last payment.
+-- 2) Subquery
+--    Advantages: finds the real last store using the last payment.
+--    Disadvantages: many subqueries inside each other, so it is hard to read.
+-- 3) CTE
+--    Advantages: clear steps: revenue, last payment, last store. Each step is easy to check.
+--    Disadvantages: longest code.
+-- Production: CTE, because it gives the correct last store and is easy to check. If we did not need the last store, JOIN would be enough.
+
+
 -- PART 2, TASK 2
 -- Show which 5 movies were rented more than others (number of rentals), and what's the
 -- expected age of the audience for these movies? Use the MPAA film rating system.
+-- Assumption: G = all ages, PG = 8+ (parental guidance), PG-13 = 13+, R = 17+, NC-17 = 18+.
 
 SELECT f.title,
        f.rating,
@@ -273,8 +336,21 @@ INNER JOIN public.film AS f ON f.film_id = fr.film_id
 ORDER BY fr.number_of_rentals DESC, f.title
 LIMIT 5;
 
+-- 1) JOIN
+--    Advantages: short and easy.
+--    Disadvantages: title and rating must be in GROUP BY.
+-- 2) Subquery
+--    Advantages: also shows films with 0 rentals.
+--    Disadvantages: it counts for all 1000 films before sorting, so it is slower.
+-- 3) CTE
+--    Advantages: first count rentals by film, then take title and rating. Clean and clear.
+--    Disadvantages: a bit longer than JOIN.
+-- Production: CTE, because counting and showing film details are separate. JOIN is also fine.
+
+
 -- PART 3, V1
 -- Which actors/actresses didn't act for a longer period of time than the others?
+-- V1: gap between the actor's latest film year and the current year.
 
 SELECT a.first_name,
        a.last_name,
@@ -310,6 +386,18 @@ SELECT a.first_name,
 FROM latest_release AS lr
 INNER JOIN public.actor AS a ON a.actor_id = lr.actor_id
 ORDER BY gap_years DESC, a.last_name, a.first_name;
+
+-- 1) JOIN
+--    Advantages: shortest and fast.
+--    Disadvantages: actors with no films are not shown.
+-- 2) Subquery
+--    Advantages: finds the latest year first, then adds the names.
+--    Disadvantages: same result as JOIN, but a bit harder to read.
+-- 3) CTE
+--    Advantages: easy to read, the latest year part has a name.
+--    Disadvantages: longer than needed for a small task.
+-- Production: JOIN, because it is simple and fast. The result changes every year because it uses CURRENT_DATE.
+
 
 -- PART 3, V2
 -- V2: gaps between sequential films per each actor.
@@ -367,6 +455,17 @@ SELECT a.first_name,
        a.last_name,
        MAX(yg.year_to - yg.year_from) AS biggest_gap_years
 FROM year_gaps AS yg
-INNER JOIN public.actor AS a ON a.actor_id = yg.actor_id
+INNER JOIN public.actor a ON a.actor_id = yg.actor_id
 GROUP BY a.actor_id, a.first_name, a.last_name
 ORDER BY biggest_gap_years DESC, a.last_name, a.first_name;
+
+-- 1) Self-JOIN
+--    Advantages: one query, shows every gap.
+--    Disadvantages: the film table is joined to itself, so many rows are created.
+-- 2) Subquery + DISTINCT
+--    Advantages: easy idea: find the next year after the current year.
+--    Disadvantages: it runs for every actor and year row, so it is the slowest.
+-- 3) CTE
+--    Advantages: first takes each actor's unique years, so there are fewer rows. Shows the biggest gap for each actor.
+--    Disadvantages: still joins the table to itself, and shows only the biggest gap.
+-- Production: CTE, because it works with fewer rows and is easy to read. In real work LAG() can also be used.
